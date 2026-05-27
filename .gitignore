@@ -1,0 +1,13 @@
+# Internal planning docs (specs, plans) — keep local, never publish
+docs/
+
+# Per-lead config profiles are private — never commit (except the test fixture)
+.jira-coordinator/profiles/*
+!.jira-coordinator/profiles/_fixture/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# OS noise
+.DS_Store
+**/.DS_Store

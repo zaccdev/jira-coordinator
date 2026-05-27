@@ -1,0 +1,14 @@
+{
+  "name": "jira-coordinator-marketplace",
+  "owner": { "name": "zaccdev" },
+  "metadata": {
+    "description": "Marketplace hosting the Jira Coordinator plugin — an AI project coordinator for Jira."
+  },
+  "plugins": [
+    {
+      "name": "jira-coordinator",
+      "source": "./",
+      "description": "AI project coordinator for Jira (digest, signals, capacity, release tickets)."
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+# Which tickets are "in scope" for the daily digest.
+# Replace the placeholders with YOUR Jira project keys.
+projects: [PROJ1, PROJ2, PROJ3]
+base_jql: "project in ({projects}) AND statusCategory != Done"
+thresholds:
+  stale_days: 3
+  deadline_warning_days: 2
+include_unassigned: true
+overrides_allowed: true

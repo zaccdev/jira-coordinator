@@ -1,0 +1,7 @@
+# Manual availability register. Keep current; entries overlapping today mark a
+# person unavailable (the assignment advisor and manpower report use this).
+# types: annual_leave | medical_leave | holiday | meeting | outstation | available
+entries:
+  - { who: Carol, type: annual_leave,  from: 2026-05-28, to: 2026-05-30 }
+  - { who: Alice, type: medical_leave, from: 2026-05-27, to: 2026-05-27 }
+  - { who: Bob,   type: outstation,    from: 2026-05-27, to: 2026-05-29, note: client site }

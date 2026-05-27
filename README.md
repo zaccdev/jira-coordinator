@@ -6,26 +6,52 @@ in-scope tickets, surfaces what needs attention, tracks capacity and availabilit
 helps assign work, and prepares release tickets — all under a strict
 **draft-then-approve** rule, so it never changes Jira without your confirmation.
 
-> ⚠️ **Status: work in progress.** This repository currently contains only the
-> project scaffold. The plugin engine is being built from a design that lives
-> outside this repo.
+## Requirements
+- Claude Code with the Atlassian (Rovo) MCP connected (`/mcp` to check).
 
-## What it will do
+## Install
+```
+/plugin marketplace add https://github.com/zaccdev/jira-coordinator
+/plugin install jira-coordinator@jira-coordinator-marketplace
+```
 
-- **Daily digest** — pulls your in-scope tickets and reports, grouped by sub-team
-  and person, what needs attention today.
-- **Attention signals** — overdue / at-risk deadlines, stale tickets, unanswered
-  comments, blocked work, in-scope-but-unassigned, status stuck too long.
-- **Capacity & availability** — models each person's workload (estimates where
-  present, otherwise priority-weighted ticket count; blocked items are treated as
-  paused) against a per-person WIP limit, plus a manual availability register
-  (leave / holiday / meeting / etc.).
-- **Assignment advisor** — resolve a person by name or **nickname**, check whether
-  they have capacity or are away, and propose options before assigning.
-- **Manpower report** — a management-facing capacity snapshot: who's free vs
-  overloaded, team headroom, and how much work is blocked on external parties.
-- **Release tickets** — watch in-flight deployment tickets, and a builder command
-  that drafts a new one from a template + your last release.
+## First run
+Run `/jira-coordinator`. With no profile yet, it enters **init mode**: it reads
+your accessible Jira, helps you create `.jira-coordinator/profiles/<team>/` from
+the templates, and resolves your teammates' accountIds. Fill the placeholders in
+`conventions.md` (status meanings, SLAs) and `environments.yaml` (dev→QA→prod
+status names) when ready — handoff signals stay off until `environments.yaml` is
+confirmed.
+
+## Daily use
+- `/jira-coordinator` — full digest (written to `docs/standups/YYYY-MM-DD.md`).
+- `/release-ticket app-bo v1.6.46` — draft a deployment ticket from the last one.
+- `/jira capacity` (or `manpower`) — management-facing manpower report: who's free,
+  nearing, or overloaded; team headroom; and an evidence line you can show upward.
+- `/jira assign a tech-design doc to <name>` — resolves the nickname, checks that
+  person's load + availability first, and proposes options if they're full or away.
+- `/jira <anything>` — router: standup, release, capacity, assignment, or an
+  ad-hoc Jira request (e.g. `/jira comment on PROJ-123 ...`).
+
+## Roles, nicknames, capacity & availability
+- In `teams.yaml`, give each person a `role` + `responsibilities` (e.g.
+  `code_review`, `release_signoff`), `aliases` (nicknames), and a `wip_limit`.
+  "assign to al" resolves `al` to the right Jira account, and the coordinator
+  routes work by responsibility (e.g. review tasks go to reviewers).
+- Load is measured (estimates where present, else priority-weighted ticket count;
+  blocked tickets are paused, not counted) against `wip_limit`.
+- Keep `availability.yaml` current with leave / medical / holiday / meeting /
+  outstation entries so the advisor and manpower report know who's actually around.
+
+## Write safety
+By default the plugin reads freely but renders every write as an **action-preview
+card** and executes nothing until you approve it in the session. You can change
+this in `settings.yaml`:
+- `approval_mode: review` (default) — preview + approve every write.
+- `approval_mode: auto` — execute without prompting. ⚠ Risk: the agent can
+  comment/transition/reassign on its own; misreads become live Jira changes. Use
+  `auto_allow: [comment]` to auto-run only safe action types; `create` is never
+  automatic unless you explicitly list it.
 
 ## How it works
 
@@ -40,16 +66,15 @@ engine (shared, in this repo)        config (private, on your machine — git-ig
   templates/     blank profile files
 ```
 
-## Requirements
-
-- Claude Code with the Atlassian MCP connected.
-
 ## Privacy
-
 Your team configuration (rosters, project scope, availability) lives under
 `.jira-coordinator/profiles/` and is git-ignored. The engine ships with **no**
 organization-specific data — only placeholder templates you fill in locally.
 
-## License
+## Automate the morning digest
+Use Claude Code's `/schedule` to run `/jira-coordinator` each working morning. The
+scheduled run produces the digest file; you review it and approve any actions
+manually.
 
+## License
 MIT — see [LICENSE](./LICENSE).

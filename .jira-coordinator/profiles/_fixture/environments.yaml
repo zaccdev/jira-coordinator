@@ -1,0 +1,9 @@
+# Dev -> QA -> Product handoff model.
+# PLACEHOLDER VALUES — set the real status names your team uses before relying on
+# handoff signals.
+environments: [SBX, QA, STG, PROD]
+stages:
+  - { name: dev,        ready_status: "Integration Done", next: QA,   owner: backend, budget_days: 2 }
+  - { name: qa,         ready_status: "Ready for QA",      next: STG,  owner: qa,      budget_days: 3 }
+  - { name: staging,    ready_status: "QA Passed",         next: PROD, owner: qa,      budget_days: 2 }
+  - { name: production, ready_status: "Approved for PROD", next: null, owner: devops,  budget_days: 1 }

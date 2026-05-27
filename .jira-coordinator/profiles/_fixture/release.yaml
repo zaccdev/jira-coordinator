@@ -1,0 +1,26 @@
+# Configuration for release watch + /release-ticket.
+# Replace OPS with your release/deployment project key, and the URLs / service
+# names with your own.
+project: OPS
+issue_type: Service Request
+# How to find the most recent release to clone for a given product line:
+match_rules:
+  app-bo: 'project = OPS AND summary ~ "app-bo" AND issuetype = "Service Request" ORDER BY created DESC'
+  vendor-service: 'project = OPS AND summary ~ "vendor-service" AND issuetype = "Service Request" ORDER BY created DESC'
+labels: [yourapp, automation]
+region_sequence:
+  - { region: Region1, label: region-1, time: "10:00" }
+  - { region: Region2, label: region-2, time: "11:00" }
+  - { region: Region3, label: region-3, time: "14:00" }
+  - { region: Region4, label: region-4, time: "15:00" }
+  - { region: Region5, label: region-5, time: "16:00" }
+services:
+  service-a: "https://git.example.com/your-group/service-a"
+  service-b: "https://git.example.com/your-group/service-b"
+  service-c: "https://git.example.com/your-group/service-c"
+mentions:
+  dev: ["REPLACE_WITH_ACCOUNT_ID"]
+  qa:  ["REPLACE_WITH_ACCOUNT_ID"]
+# Watch: flag release SRs stuck at these statuses past the budget (working days).
+watch_status_budgets:
+  "Pending For Approval": 2

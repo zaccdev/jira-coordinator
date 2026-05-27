@@ -1,0 +1,9 @@
+# Behavior toggles for this profile.
+approval_mode: review     # review = preview every write + ask (DEFAULT, SAFE);
+                          # auto   = execute writes without asking. RISK: the agent
+                          #          can comment/transition/reassign/create tickets
+                          #          on its own. Misreads become live Jira changes.
+auto_allow: []            # when approval_mode: auto, optionally limit auto-exec to
+                          # specific action types, e.g. [comment]; others still prompt.
+                          # 'create' is never auto unless explicitly listed here.
+output: [markdown, terminal]   # where the digest lands

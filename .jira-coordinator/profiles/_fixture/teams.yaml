@@ -1,0 +1,21 @@
+# Who is on the team. accountIds are resolved during `/init` via lookupJiraAccountId.
+# aliases  = nicknames you use for this person; "assign to <alias>" resolves here.
+# wip_limit = max concurrent active tickets before this person is "overloaded".
+# role/responsibilities power role-aware routing + reporting. Suggested tags:
+#   implementation, code_review, pr_approval, release_signoff, deployment,
+#   qa_signoff, assign_work, sprint_planning, vendor_liaison.
+team: My Team
+lead:
+  name: Your Name
+  accountId: "REPLACE_WITH_ACCOUNT_ID"
+  role: Backend Lead
+  responsibilities: [code_review, release_signoff, assign_work]
+subteams:
+  backend:
+    - { name: Alice, accountId: "REPLACE_WITH_ACCOUNT_ID", aliases: [al], wip_limit: 5,
+        role: Backend Engineer, responsibilities: [implementation] }
+    - { name: Bob, accountId: "REPLACE_WITH_ACCOUNT_ID", aliases: [bo], wip_limit: 5,
+        role: Backend Engineer, responsibilities: [implementation] }
+  frontend:
+    - { name: Carol, accountId: "REPLACE_WITH_ACCOUNT_ID", aliases: [ca], wip_limit: 4,
+        role: Frontend Lead, responsibilities: [code_review, implementation] }

@@ -187,7 +187,7 @@ git commit -m "feat: add plugin manifest and marketplace entry"
 These are the blank files `init` mode copies for a new lead. Each is valid and self-documenting.
 
 **Files:**
-- Create: `templates/teams.example.yaml`, `templates/scope.example.yaml`, `templates/conventions.example.md`, `templates/projects.example.md`, `templates/release.example.yaml`, `templates/release-template.example.md`, `templates/environments.example.yaml`
+- Create: `templates/teams.example.yaml`, `templates/scope.example.yaml`, `templates/conventions.example.md`, `templates/projects.example.md`, `templates/release.example.yaml`, `templates/release-template.example.md`, `templates/environments.example.yaml`, `templates/availability.example.yaml`, `templates/settings.example.yaml`
 
 - [ ] **Step 1: `templates/teams.example.yaml`**
 
@@ -195,16 +195,24 @@ These are the blank files `init` mode copies for a new lead. Each is valid and s
 # Who is on the team. accountIds are resolved during `init` via lookupJiraAccountId.
 # aliases  = nicknames you use for this person; "assign to <alias>" resolves here.
 # wip_limit = max concurrent active tickets before this person is "overloaded".
+# role/responsibilities power role-aware routing + reporting. Suggested tags:
+#   implementation, code_review, pr_approval, release_signoff, deployment,
+#   qa_signoff, assign_work, sprint_planning, vendor_liaison.
 team: ExampleApp Core
 lead:
   name: Your Name
   accountId: "REPLACE_WITH_ACCOUNT_ID"
+  role: BackOffice Backend Lead
+  responsibilities: [code_review, release_signoff, assign_work]
 subteams:
   backend:
-    - { name: alice, accountId: "REPLACE_WITH_ACCOUNT_ID", aliases: [wei, sc], wip_limit: 5 }
-    - { name: bob, accountId: "REPLACE_WITH_ACCOUNT_ID", aliases: [jl], wip_limit: 5 }
+    - { name: alice, accountId: "REPLACE_WITH_ACCOUNT_ID", aliases: [wei, sc], wip_limit: 5,
+        role: Backend Engineer, responsibilities: [implementation] }
+    - { name: bob, accountId: "REPLACE_WITH_ACCOUNT_ID", aliases: [jl], wip_limit: 5,
+        role: Backend Engineer, responsibilities: [implementation] }
   frontend:
-    - { name: Carol, accountId: "REPLACE_WITH_ACCOUNT_ID", aliases: [abc, kn], wip_limit: 4 }
+    - { name: Carol, accountId: "REPLACE_WITH_ACCOUNT_ID", aliases: [abc, kn], wip_limit: 4,
+        role: BackOffice Frontend Lead, responsibilities: [code_review, implementation] }
 ```
 
 - [ ] **Step 2: `templates/scope.example.yaml`**
@@ -343,6 +351,20 @@ entries:
   - { who: bob,      type: outstation,    from: 2026-05-27, to: 2026-05-29, note: client site }
 ```
 
+- [ ] **Step 7c: `templates/settings.example.yaml`**
+
+```yaml
+# Behavior toggles for this profile.
+approval_mode: review     # review = preview every write + ask (DEFAULT, SAFE);
+                          # auto   = execute writes without asking. RISK: the agent
+                          #          can comment/transition/reassign/create tickets
+                          #          on its own. Misreads become live Jira changes.
+auto_allow: []            # when approval_mode: auto, optionally limit auto-exec to
+                          # specific action types, e.g. [comment]; others still prompt.
+                          # 'create' is never auto unless explicitly listed here.
+output: [markdown, terminal]   # where the digest lands
+```
+
 - [ ] **Step 8: Validate every YAML template parses**
 
 Run:
@@ -378,6 +400,7 @@ cp templates/release.example.yaml      .jira-coordinator/profiles/_fixture/relea
 cp templates/release-template.example.md .jira-coordinator/profiles/_fixture/release-template.md
 cp templates/environments.example.yaml .jira-coordinator/profiles/_fixture/environments.yaml
 cp templates/availability.example.yaml .jira-coordinator/profiles/_fixture/availability.yaml
+cp templates/settings.example.yaml     .jira-coordinator/profiles/_fixture/settings.yaml
 ```
 
 - [ ] **Step 2: Narrow the fixture scope to the 3 most active projects (fast, real data)**
@@ -514,13 +537,23 @@ transition / On Hold), target KEY, and exact proposed content. NOTHING is execut
 - [ ] **Step 3b: `references/capacity-rules.md`**
 
 ````markdown
-# Nickname resolution, capacity, availability, assignment advisor, manpower report
+# Nickname resolution, roles, capacity, availability, assignment advisor, manpower report
 
 ## Name resolution (used wherever a person is named)
 Given a token like "abc":
 1. Case-insensitive match against every member's `name` and `aliases` in `teams.yaml`.
 2. If no match, try `lookupJiraAccountId` on the literal token.
 3. If ambiguous (>1 match) or empty, ask the lead. NEVER assign to a guessed account.
+
+## Roles & responsibilities (role-aware routing)
+Each member (and the lead) has a `role` string and `responsibilities` tags in
+`teams.yaml`. Use them to route work and frame reports:
+- Infer the responsibility a piece of work implies (e.g. "tech design doc review"
+  / "needs review" -> `code_review`; "sign off release" -> `release_signoff`).
+- Prefer assignees who hold that responsibility. If the named target lacks it,
+  flag this in the advisor options (don't silently assign).
+- In the digest, surface items awaiting the LEAD's own responsibilities first
+  (e.g. tickets needing their `code_review` or `release_signoff`).
 
 ## Capacity model (hybrid)
 For each member, gather open non-Done tickets where they are assignee. Compute
@@ -541,13 +574,15 @@ Read `availability.yaml`. A member is **unavailable today** if any entry has
 (annual_leave / medical_leave / holiday / meeting / outstation).
 
 ## Assignment advisor (when asked to assign work to someone)
-1. Resolve the name. 2. Check availability. 3. Compute load tier.
-4. If unavailable OR overloaded, do NOT silently assign. Present numbered options:
+1. Resolve the name. 2. Check the work's implied responsibility vs the target's
+   `responsibilities`. 3. Check availability. 4. Compute load tier.
+5. If unavailable OR overloaded OR missing the needed responsibility, do NOT
+   silently assign. Present numbered options:
    (a) assign anyway; (b) put a specific lower-priority ticket On Hold
    (`transitionJiraIssue`); (c) re-rank their queue by priority (propose order);
-   (d) name a teammate in the same sub-team who is `free`.
-5. Execute only the approved option (reassign = `editJiraIssue`, On Hold =
-   `transitionJiraIssue`) per the write-safety rule.
+   (d) name a teammate who is `free` AND holds the needed responsibility.
+6. Execute only the approved option (reassign = `editJiraIssue`, On Hold =
+   `transitionJiraIssue`) per the write-safety rule (action-preview card).
 
 ## Manpower report (management-facing)
 - Per person: tier, active count, blocked count, availability.
@@ -596,11 +631,30 @@ Reference files (read as needed): `references/jql-recipes.md`,
 `references/capacity-rules.md`.
 
 ## Write safety (HARD RULE)
-Read tools may be called freely. Write tools (`editJiraIssue`,
+Read tools may be called freely. Every write (`editJiraIssue`,
 `addCommentToJiraIssue`, `transitionJiraIssue`, `createIssueLink`,
-`createJiraIssue`) may be called ONLY after the user approves a specific numbered
-item from the "Proposed actions" section in THIS session. Approval never carries
-across runs. When in doubt, draft — do not write.
+`createJiraIssue`) is first rendered as an ACTION-PREVIEW CARD, then governed by
+`settings.yaml.approval_mode`.
+
+Action-preview card (numbered), shown before any write:
+```
+[#2] COMMENT → KEY     As: <author>   Body: <full text>
+[#3] TRANSITION → KEY  <from> → <to>  Reason: <why>
+[#4] REASSIGN → KEY    <old> → <new>  (<why>)
+[#5] CREATE → PROJ     type / summary / rendered body
+```
+After the cards, prompt: `approve <#s> / edit <#> / skip <#> / approve all / cancel`.
+
+approval_mode:
+- `review` (DEFAULT): execute ONLY the items the user approves THIS session.
+  Approval never carries across runs.
+- `auto`: execute without prompting, but print a one-line risk banner first
+  ("⚠ auto mode: writes execute without review"). If `auto_allow` is set, only
+  those action types auto-run; others still prompt. NEVER auto-run `createJiraIssue`
+  unless `create` is explicitly in `auto_allow`.
+
+In every mode, echo each executed write back with its ticket link. When in doubt,
+draft — do not write.
 
 ## Modes
 Do Step 0–1 (profile + context) in every mode, then:
@@ -618,8 +672,9 @@ Do Step 0–1 (profile + context) in every mode, then:
 3. If one exists -> use it. If several -> ask which.
 
 ## Step 1: Load context
-Read the profile's `teams.yaml`, `scope.yaml`, `conventions.md`, `projects.md`,
-`release.yaml`, `environments.yaml`, `availability.yaml`.
+Read the profile's `teams.yaml` (incl. roles/responsibilities), `scope.yaml`,
+`conventions.md`, `projects.md`, `release.yaml`, `environments.yaml`,
+`availability.yaml`, and `settings.yaml` (approval_mode, output).
 
 ## Step 2: Resolve scope and query
 Build JQL per `references/jql-recipes.md`. Call `searchJiraIssuesUsingJql` with
@@ -649,17 +704,23 @@ Write `docs/standups/{today}.md` and print it, following
 drafts only.
 
 ## Step 7: Await approval
-If the user approves specific numbered actions, execute ONLY those via the
-matching write tool, then confirm what was written with ticket links.
+Render the "Proposed actions" as action-preview cards and apply `approval_mode`
+(see Write safety). Execute only approved/auto-allowed items via the matching
+write tool, then confirm each with its ticket link.
 
 ## Init mode (first run, no profile)
 1. `getAccessibleAtlassianResources` + `atlassianUserInfo` to confirm site + user.
 2. Ask the team name; create `.jira-coordinator/profiles/<team>/` by copying the
    files from the plugin's `templates/` directory.
 3. Help fill `teams.yaml`: for each member, resolve accountId via
-   `lookupJiraAccountId`, and ask for any nicknames (`aliases`) and a `wip_limit`.
-4. Confirm `scope.yaml.projects` (offer the ExampleApp core set as default).
-5. Tell the user which placeholders still need filling: `conventions.md` (status
+   `lookupJiraAccountId`, and ask for nicknames (`aliases`), a `wip_limit`, and a
+   `role`. Suggest `responsibilities` tags from a default role→responsibilities map
+   (e.g. a "Lead" → code_review, release_signoff, assign_work) for confirmation.
+4. Capture the lead's own `role` + responsibilities the same way.
+5. Confirm `scope.yaml.projects` (offer the ExampleApp core set as default).
+6. Confirm `settings.yaml.approval_mode` — default `review`; if the user wants
+   `auto`, state the risk first (writes execute without review) and record it.
+7. Tell the user which placeholders still need filling: `conventions.md` (status
    meanings, SLAs, budgets), `environments.yaml` (stage status names — handoff
    signals stay inactive until confirmed), and `availability.yaml` (kept current
    manually — empty register is fine to start).
@@ -771,8 +832,10 @@ Reference: `references/clone-rules.md`. Config: profile's `release.yaml` and
 `release-template.md`.
 
 ## Write safety (HARD RULE)
-Never call `createJiraIssue` until the user approves the drafted ticket in THIS
-session.
+Render the drafted ticket as a CREATE action-preview card and obey
+`settings.yaml.approval_mode`. Never call `createJiraIssue` until the user approves
+in THIS session — and never auto-create unless `create` is explicitly in
+`auto_allow` (see jira-coordinator SKILL "Write safety").
 
 ## Steps
 1. Select the active profile (as in jira-coordinator Step 0).
@@ -865,9 +928,10 @@ Dispatch:
 - Anything else (e.g. "comment on PJ-CORE-123 ...", "create a bug in PJ-VI ...") ->
   treat as an ad-hoc Jira request and fulfill it directly via the Atlassian MCP.
 
-HARD RULE: in all paths, never call a Jira write tool (editJiraIssue,
-addCommentToJiraIssue, transitionJiraIssue, createIssueLink, createJiraIssue)
-until the user approves the specific action in this session.
+HARD RULE: in all paths, every write (editJiraIssue, addCommentToJiraIssue,
+transitionJiraIssue, createIssueLink, createJiraIssue) goes through the
+action-preview card and `settings.yaml.approval_mode` (review by default). Do not
+execute a write the user hasn't approved unless approval_mode/auto_allow permits it.
 ```
 
 - [ ] **Step 4: Validate command frontmatter**
@@ -944,17 +1008,25 @@ confirmed.
 - `/jira <anything>` — router: standup, release, capacity, assignment, or an
   ad-hoc Jira request (e.g. `/jira comment on PJ-CORE-123 ...`).
 
-## Nicknames, capacity & availability
-- In `teams.yaml`, give each person `aliases` (nicknames) and a `wip_limit`.
-  "assign to abc" resolves `abc` to the right Jira account.
-- The coordinator measures load (estimates where present, else priority-weighted
-  ticket count; blocked tickets are paused, not counted) against `wip_limit`.
+## Roles, nicknames, capacity & availability
+- In `teams.yaml`, give each person a `role` + `responsibilities` (e.g.
+  `code_review`, `release_signoff`), `aliases` (nicknames), and a `wip_limit`.
+  "assign to abc" resolves `abc` to the right Jira account, and the coordinator
+  routes work by responsibility (e.g. review tasks go to reviewers).
+- Load is measured (estimates where present, else priority-weighted ticket count;
+  blocked tickets are paused, not counted) against `wip_limit`.
 - Keep `availability.yaml` current with leave / medical / holiday / meeting /
   outstation entries so the advisor and manpower report know who's actually around.
 
 ## Write safety
-The plugin reads freely but will not edit, comment, transition, or create any
-Jira issue until you approve the specific numbered action in the session.
+By default the plugin reads freely but renders every write as an **action-preview
+card** and executes nothing until you approve it in the session. You can change
+this in `settings.yaml`:
+- `approval_mode: review` (default) — preview + approve every write.
+- `approval_mode: auto` — execute without prompting. ⚠ Risk: the agent can
+  comment/transition/reassign on its own; misreads become live Jira changes. Use
+  `auto_allow: [comment]` to auto-run only safe action types; `create` is never
+  automatic unless you explicitly list it.
 
 ## Your config is private
 `.jira-coordinator/profiles/` and `docs/standups/` are git-ignored. The plugin
@@ -976,6 +1048,8 @@ grep -Eq "plugin install jira-coordinator" README.md \
  && grep -q "draft-then-approve\|draft" README.md \
  && grep -qi "capacity\|manpower" README.md \
  && grep -qi "availability" README.md \
+ && grep -qi "approval_mode" README.md \
+ && grep -qi "role" README.md \
  && echo "README OK"
 ```
 Expected: `README OK`.

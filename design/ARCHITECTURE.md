@@ -37,7 +37,11 @@ own Atlassian login.
   present, else priority-weighted ticket count) + a manual availability register
   (leave / medical / holiday / meeting / outstation). Power an assignment advisor
   and a management-facing manpower report.
-- "Draft, then approve" write workflow.
+- **Reviewable write workflow**: every write renders an action-preview card for
+  approval by default; an opt-in `auto` mode can skip review (with a stated risk).
+- **Role-aware coordination**: store the lead's and members' roles +
+  responsibilities so the agent understands who does code review, release
+  sign-off, etc., and tailors routing and reporting accordingly.
 - Be distributable as a Claude Code plugin so other team leads can adopt it.
 
 **Non-goals (v1)**
@@ -117,7 +121,8 @@ The engine contains **zero team-specific data**.
 │       ├── release.yaml         OPS project, label scheme, service→repo map, mention groups
 │       ├── release-template.md  deployment SR body skeleton (placeholders)
 │       ├── environments.yaml    env list + status→stage→env handoff mapping
-│       └── availability.yaml    manual register: who is on leave/holiday/meeting/outstation
+│       ├── availability.yaml    manual register: who is on leave/holiday/meeting/outstation
+│       └── settings.yaml        behavior toggles: approval_mode (review|auto), output prefs
 └── docs/standups/YYYY-MM-DD.md         digest output
 ```
 
@@ -149,16 +154,38 @@ only ever sees what that lead's Jira permissions allow.
 ### teams.yaml
 ```yaml
 team: ExampleApp Core
-lead: { name: Your Name, accountId: <ACCOUNT_ID> }
+lead:
+  name: Your Name
+  accountId: <ACCOUNT_ID>
+  role: BackOffice Backend Lead
+  responsibilities: [code_review, release_signoff, assign_work]
 subteams:
   backend:
-    - { name: alice,  accountId: "<resolved-on-init>", aliases: [wei, sc], wip_limit: 5 }
-    - { name: bob,  accountId: "<resolved-on-init>", aliases: [jl],     wip_limit: 5 }
+    - { name: alice, accountId: "<resolved-on-init>", aliases: [wei, sc], wip_limit: 5,
+        role: Backend Engineer, responsibilities: [implementation] }
+    - { name: bob, accountId: "<resolved-on-init>", aliases: [jl], wip_limit: 5,
+        role: Backend Engineer, responsibilities: [implementation] }
   frontend:
-    - { name: Carol, accountId: "<resolved-on-init>", aliases: [abc, kn], wip_limit: 4 }
+    - { name: Carol, accountId: "<resolved-on-init>", aliases: [abc, kn], wip_limit: 4,
+        role: BackOffice Frontend Lead, responsibilities: [code_review, implementation] }
 # accountIds resolved during init via lookupJiraAccountId.
 # aliases  = nicknames the lead uses; resolver maps any alias -> this member.
 # wip_limit = max concurrent active tickets before "overloaded" (capacity, §6c).
+# role/responsibilities power role-aware routing (§6c) and reporting.
+# responsibility tags (suggested vocab): implementation, code_review, pr_approval,
+#   release_signoff, deployment, qa_signoff, assign_work, sprint_planning, vendor_liaison.
+```
+
+### settings.yaml
+```yaml
+# Behavior toggles for this profile.
+approval_mode: review     # review = preview every write + ask (DEFAULT, SAFE);
+                          # auto   = execute writes without asking. RISK: the agent
+                          #          can comment/transition/reassign/create tickets
+                          #          on its own. Misreads become live Jira changes.
+auto_allow: []            # when approval_mode: auto, optionally limit auto-exec to
+                          # specific action types, e.g. [comment]; others still prompt.
+output: [markdown, terminal]   # where the digest lands
 ```
 
 ### scope.yaml
@@ -285,15 +312,26 @@ entries:
 A person with an active entry overlapping "today" is **unavailable**; the advisor
 and reports factor this in (e.g. don't assign new work to someone on leave).
 
+### Role-aware routing
+Roles + `responsibilities` (teams.yaml) shape who work goes to:
+- Tasks implying a responsibility route to people who hold it — e.g. "needs code
+  review" → members with `code_review`; "release sign-off" → `release_signoff`.
+- The advisor will not propose assigning a responsibility-tagged task to someone
+  who lacks that tag without flagging it.
+- The digest frames the lead's own duties by their role (e.g. surfaces items
+  awaiting *their* code review / sign-off first).
+
 ### Assignment advisor
 When asked to assign work to a person:
 1. Resolve the name (above).
-2. Check availability register for today.
-3. Compute their load tier.
-4. If unavailable or overloaded, do NOT silently assign — present options as
-   numbered drafts: assign anyway · put a named lower-priority ticket On Hold ·
-   re-rank their queue by priority · suggest a teammate with headroom.
-5. Execute only the chosen option on approval (reassign = `editJiraIssue`,
+2. Check the work's implied responsibility against the target's `responsibilities`.
+3. Check availability register for today.
+4. Compute their load tier.
+5. If unavailable, overloaded, or missing the needed responsibility, do NOT
+   silently assign — present options as numbered cards (§9): assign anyway · put a
+   named lower-priority ticket On Hold · re-rank their queue by priority · suggest
+   a teammate with headroom (and the right role).
+6. Execute only the chosen option on approval (reassign = `editJiraIssue`,
    On Hold = `transitionJiraIssue`), per §9.
 
 ### Manpower report (management-facing)
@@ -339,11 +377,40 @@ Sections, in order:
 ## 9. Write safety
 
 Hard rule in both skills: read tools (`searchJiraIssuesUsingJql`, `getJiraIssue`,
-comment/transition *reads*) may be called freely. Write tools
-(`editJiraIssue`, `addCommentToJiraIssue`, `transitionJiraIssue`,
-`createIssueLink`, `createJiraIssue`) may be called **only** after the lead
-approves a specific numbered action in the current session — this includes
-`/release-ticket` creation. Approval does not carry across runs.
+comment/transition *reads*) may be called freely. Write tools (`editJiraIssue`,
+`addCommentToJiraIssue`, `transitionJiraIssue`, `createIssueLink`,
+`createJiraIssue`) are governed by `settings.yaml.approval_mode`.
+
+### Action-preview card (always rendered before a write)
+Every proposed write is shown as a numbered card in the terminal/chat, so the lead
+sees exactly what will happen:
+
+```
+[#2] COMMENT → PJ-CORE-123  "FeatureX Summary"
+  As: Your Name
+  Body:
+    > Deployed v1.6.46 to QA; please verify by EOD.
+
+[#3] TRANSITION → PJ-CORE-130   In Progress → On Hold
+  Reason: blocked by vendor (PJ-VI-44)
+
+[#4] REASSIGN → PJ-VI-51     bob → alice   (bob overloaded: 6/5)
+```
+Field shape by type: COMMENT shows author + full body; TRANSITION shows
+`from → to` + reason; REASSIGN/EDIT shows `old → new`; CREATE shows project, type,
+summary, and rendered body. After the cards: `approve <#s> / edit <#> / skip <#> /
+approve all / cancel`.
+
+### approval_mode
+- **`review`** (default): render the cards and execute ONLY the items the lead
+  approves this session. Approval never carries across runs.
+- **`auto`**: execute writes without prompting. The skill MUST print a one-line
+  risk banner each run ("⚠ auto mode: writes execute without review"). If
+  `auto_allow` is set, only those action types auto-run; all others still prompt.
+  `createJiraIssue` is never auto-run unless `create` is explicitly in `auto_allow`.
+
+Regardless of mode, every executed write is echoed back with the resulting ticket
+link so there is always an audit trail in the session.
 
 ## 10. Init / onboarding mode
 
@@ -353,6 +420,10 @@ done manually on 2026-05-27:
 2. Lists the lead's projects and recent assignees.
 3. Interactively scaffolds a profile from the templates, resolving accountIds
    via `lookupJiraAccountId`.
+4. Captures the **lead's role** (and suggests responsibility tags from a default
+   role→responsibilities map for confirmation), then each member's role.
+5. Confirms `approval_mode` (defaults to `review`; explains the `auto` risk before
+   accepting it).
 No lead ever edits a blank file from scratch.
 
 ## 11. Distribution (Claude Code plugin)
@@ -380,6 +451,8 @@ and approves actions manually. Automation produces; the human disposes.
 - `availability.yaml` is maintained manually and kept current by the lead/members (§6c).
 - Whether tickets carry usable story-point/time estimates (affects hybrid capacity
   accuracy; engine falls back to priority-weighted count when absent).
+- Roles + responsibility tags for the lead and each member (lead-authored at init, §6c).
+- `approval_mode` default is `review`; `auto`/`auto_allow` are opt-in with a stated risk (§9).
 
 ## 14. Milestones
 
@@ -387,8 +460,10 @@ and approves actions manually. Automation produces; the human disposes.
 2. Profile schema + templates + init mode.
 3. Scope resolution + Jira query + enrichment.
 4. Signal detection + digest generation (read-only end to end).
-5. Approve-and-execute write workflow.
+5. Approve-and-execute write workflow: action-preview cards + `approval_mode`
+   (review default / auto opt-in) (§9).
 6. Release watch in digest (§6a) + handoff signals (§6b).
-7. Nickname resolution + capacity/availability + assignment advisor + manpower report (§6c).
+7. Roles + nickname resolution + capacity/availability + role-aware assignment
+   advisor + manpower report (§6c).
 8. `/release-ticket` command — hybrid template + clone-from-last.
 9. Scheduling + multi-lead distribution polish.

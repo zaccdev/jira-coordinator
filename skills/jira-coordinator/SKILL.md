@@ -1,6 +1,6 @@
 ---
 name: jira-coordinator
-description: Use when the user wants a daily Jira standup/digest, to see what needs attention across their team's tickets (deadlines, stale tickets, unanswered comments, blockers, workload), to check who has capacity / is overloaded / is on leave, to advise on assigning work to a person (by name or nickname), to produce a manpower report for management, or to watch release tickets. Reads a team profile from .jira-coordinator/profiles/ and reports via a dated markdown digest. Read + draft only — never writes to Jira without per-action approval.
+description: Use when the user wants a daily Jira standup/digest, to see what needs attention across their team's tickets (deadlines, stale tickets, unanswered comments, blockers, workload), to check who has capacity / is overloaded / is on leave, to advise on assigning work to a person (by name or nickname), to produce a manpower report for management, to surface @-mentions of the lead in Jira and/or Confluence, or to watch release tickets. Reads a team profile from .jira-coordinator/profiles/ and reports via a dated markdown digest. Read + draft only — never writes to Jira without per-action approval.
 ---
 
 # Jira Coordinator
@@ -10,7 +10,7 @@ capacity/availability analysis, an assignment advisor, and a manpower report.
 
 Reference files (read as needed): `references/jql-recipes.md`,
 `references/signal-rules.md`, `references/digest-template.md`,
-`references/capacity-rules.md`.
+`references/capacity-rules.md`, `references/mentions-rules.md`.
 
 ## Resolve cloudId at runtime (never hardcode)
 Call `getAccessibleAtlassianResources` and use the returned `id` as `cloudId` for
@@ -53,6 +53,10 @@ Do Step 0–1 (profile + context) in every mode, then:
 - **Assignment advisor** ("assign \<work\> to \<name\>"): resolve the name and run
   the advisor flow in `references/capacity-rules.md`; present options, execute only
   the approved one per the write rule.
+- **Mentions** ("mentions" / "mention" / "tags" / "pings"): follow
+  `references/mentions-rules.md`. Parse the trailing word for source
+  (`jira` / `confluence`, default = BOTH) and optional `<N>d` lookback (default 7d).
+  Read-only; no writes generated.
 
 ## Step 0: Select profile
 1. List `.jira-coordinator/profiles/*/` (ignore `_fixture` unless asked).

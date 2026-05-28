@@ -30,8 +30,12 @@ confirmed.
   nearing, or overloaded; team headroom; and an evidence line you can show upward.
 - `/jira assign a tech-design doc to <name>` — resolves the nickname, checks that
   person's load + availability first, and proposes options if they're full or away.
-- `/jira <anything>` — router: standup, release, capacity, assignment, or an
-  ad-hoc Jira request (e.g. `/jira comment on PROJ-123 ...`).
+- `/jira mentions` — list pages/tickets where you were @-mentioned in the last 7
+  days (Confluence via CQL `mention = currentUser()`, Jira via scope-bounded
+  comment-ADF scan). Narrow with `/jira mentions jira` or `/jira mentions confluence`;
+  change window with `/jira mentions 14d`. Read-only.
+- `/jira <anything>` — router: standup, release, capacity, assignment, mentions,
+  or an ad-hoc Jira request (e.g. `/jira comment on PROJ-123 ...`).
 
 ## Roles, nicknames, capacity & availability
 - In `teams.yaml`, give each person a `role` + `responsibilities` (e.g.

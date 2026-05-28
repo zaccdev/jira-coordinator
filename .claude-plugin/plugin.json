@@ -1,7 +1,7 @@
 {
   "name": "jira-coordinator",
-  "version": "0.1.0",
-  "description": "AI project coordinator for Jira: daily digest, deadline/people/workload signals, capacity & availability, an assignment advisor, and a release-ticket watcher/builder — all under a draft-then-approve write rule. Powered by the Atlassian MCP.",
+  "version": "0.2.0",
+  "description": "AI project coordinator for Jira: daily digest, deadline/people/workload signals, capacity & availability, an assignment advisor, a Jira+Confluence @-mention scanner, and a release-ticket watcher/builder — all under a draft-then-approve write rule. Powered by the Atlassian MCP.",
   "author": { "name": "zaccdev" },
   "keywords": ["jira", "atlassian", "project-management", "release", "capacity", "devops"]
 }

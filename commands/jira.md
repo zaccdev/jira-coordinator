@@ -10,6 +10,12 @@ Dispatch:
   `jira-coordinator` (Manpower mode).
 - "assign ... to <name>" -> invoke `jira-coordinator` (Assignment advisor mode);
   resolve the name/nickname, check capacity + availability, present options.
+- "mentions" / "mention" / "tags" / "tagged me" / "pings" -> invoke
+  `jira-coordinator` (Mentions mode). Parse the trailing word for source:
+    * "jira"        -> Jira only
+    * "confluence"  -> Confluence only
+    * (anything else, or missing) -> BOTH sources (default).
+  Optional trailing "<N>d" / "<N> days" sets the lookback window (default 7d).
 - Anything else (e.g. "comment on PROJ-123 ...", "create a bug in PROJ2 ...") ->
   treat as an ad-hoc Jira request and fulfill it directly via the Atlassian MCP.
 

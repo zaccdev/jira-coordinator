@@ -16,7 +16,7 @@ helps assign work, and prepares release tickets — all under a strict
 ```
 
 ## First run
-Run `/jira-coordinator`. With no profile yet, it enters **init mode**: it reads
+Run `/digest`. With no profile yet, it enters **init mode**: it reads
 your accessible Jira, helps you create `.jira-coordinator/profiles/<team>/` from
 the templates, and resolves your teammates' accountIds. Fill the placeholders in
 `conventions.md` (status meanings, SLAs) and `environments.yaml` (dev→QA→prod
@@ -24,7 +24,7 @@ status names) when ready — handoff signals stay off until `environments.yaml` 
 confirmed.
 
 ## Daily use
-- `/jira-coordinator` — full digest (written to `docs/standups/YYYY-MM-DD.md`).
+- `/digest` — full digest (written to `docs/standups/YYYY-MM-DD.md`).
 - `/release-ticket app-bo v1.6.46` — draft a deployment ticket from the last one.
 - `/jira capacity` (or `manpower`) — management-facing manpower report: who's free,
   nearing, or overloaded; team headroom; and an evidence line you can show upward.
@@ -66,7 +66,7 @@ the Atlassian MCP, authenticated as you — no credentials are committed or shar
 ```
 engine (shared, in this repo)        config (private, on your machine — git-ignored)
   skills/        SKILL.md logic         .jira-coordinator/profiles/<team>/
-  commands/      /jira entry points       teams.yaml, scope.yaml, conventions.md, ...
+  commands/      /jira router            teams.yaml, scope.yaml, conventions.md, ...
   templates/     blank profile files
 ```
 
@@ -76,7 +76,7 @@ Your team configuration (rosters, project scope, availability) lives under
 organization-specific data — only placeholder templates you fill in locally.
 
 ## Automate the morning digest
-Use Claude Code's `/schedule` to run `/jira-coordinator` each working morning. The
+Use Claude Code's `/schedule` to run `/digest` each working morning. The
 scheduled run produces the digest file; you review it and approve any actions
 manually.
 

@@ -4,14 +4,14 @@ description: Jira coordinator router — standup, release, capacity, assignment,
 You are the `/jira` router. Parse the user's intent from: $ARGUMENTS
 
 Dispatch:
-- "standup" / "digest" / "today" / empty -> invoke `jira-coordinator` (Digest mode).
+- "standup" / "digest" / "today" / empty -> invoke `digest` (Digest mode).
 - "release ..." / "deploy ..." -> invoke the `release-ticket` skill.
 - "capacity" / "manpower" / "who's free" / "who's overloaded" -> invoke
-  `jira-coordinator` (Manpower mode).
-- "assign ... to <name>" -> invoke `jira-coordinator` (Assignment advisor mode);
+  `digest` (Manpower mode).
+- "assign ... to <name>" -> invoke `digest` (Assignment advisor mode);
   resolve the name/nickname, check capacity + availability, present options.
 - "mentions" / "mention" / "tags" / "tagged me" / "pings" -> invoke
-  `jira-coordinator` (Mentions mode). Parse the trailing word for source:
+  `digest` (Mentions mode). Parse the trailing word for source:
     * "jira"        -> Jira only
     * "confluence"  -> Confluence only
     * (anything else, or missing) -> BOTH sources (default).

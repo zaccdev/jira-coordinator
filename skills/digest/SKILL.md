@@ -1,5 +1,5 @@
 ---
-name: jira-coordinator
+name: digest
 description: Use when the user wants a daily Jira standup/digest, to see what needs attention across their team's tickets (deadlines, stale tickets, unanswered comments, blockers, workload), to check who has capacity / is overloaded / is on leave, to advise on assigning work to a person (by name or nickname), to produce a manpower report for management, to surface @-mentions of the lead in Jira and/or Confluence, or to watch release tickets. Reads a team profile from .jira-coordinator/profiles/ and reports via a dated markdown digest. Read + draft only — never writes to Jira without per-action approval.
 ---
 

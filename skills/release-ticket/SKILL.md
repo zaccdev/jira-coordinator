@@ -16,10 +16,10 @@ cached in `settings.yaml`). Never hardcode an organization's cloudId or site.
 Render the drafted ticket as a CREATE action-preview card and obey
 `settings.yaml.approval_mode`. Never call `createJiraIssue` until the user approves
 in THIS session — and never auto-create unless `create` is explicitly in
-`auto_allow` (see the jira-coordinator skill's "Write safety").
+`auto_allow` (see the digest skill's "Write safety").
 
 ## Steps
-1. Select the active profile (as in jira-coordinator Step 0).
+1. Select the active profile (as in the digest skill's Step 0).
 2. Parse the user's request for product line + version + target env + date.
    Ask for any of these that are missing.
 3. Follow `references/clone-rules.md` to find the last release and build the body.
